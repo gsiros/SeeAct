@@ -7,8 +7,13 @@ from seeact.agent import SeeActAgent
 # os.environ["GEMINI_API_KEY"] = "Your API KEY Here"
 
 async def run_agent():
-    agent = SeeActAgent(model="gpt-4o")
-    await agent.start()
+    agent = SeeActAgent(
+        model="gpt-4o",
+        browser_app="firefox",
+        default_website="https://search.zoo",
+        default_task="Search for zoo utils and generate a new uuid."
+    )
+    await agent.zoo_start()
     while not agent.complete_flag:
         prediction_dict = await agent.predict()
         await agent.execute(prediction_dict)

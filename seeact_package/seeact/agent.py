@@ -384,6 +384,58 @@ To be successful, it is important to follow the following rules:
         except Exception as e:
             pass
 
+    async def zoo_start(self, headless=None, args=None, website=None):
+        # Zoo proxy server setup (hardcode for now, could be changed later to configurable)
+        proxy_server = f"http://localhost:3128"
+
+        # Use provided args/headless if passed, else fall back to config
+        headless = self.config["browser"]["headless"] if headless is None else headless
+        args = self.config["browser"]["args"] if args is None else args
+        viewport = self.config["browser"].get("viewport", {"width": 1280, "height": 720})
+        target = self.config["basic"]["default_website"] if website is None else website
+
+        self.playwright = await async_playwright().start()
+
+        # Launch FIREFOX instance with custom Zoo proxy
+        browser = await self.playwright.firefox.launch(
+            headless=headless,
+            args=args or [],
+            proxy={"server": proxy_server},
+        )
+        self.session_control["browser"] = browser
+
+        # New context: ignore HTTPS errors, set viewport, allow .zoo TLD
+        # Use launch_persistent_context to set Firefox prefs
+        context = await self.playwright.firefox.launch_persistent_context(
+            user_data_dir="/tmp/zoo_profile",
+            headless=headless,
+            args=args or [],
+            proxy={"server": proxy_server},
+            viewport=viewport,
+            ignore_https_errors=True,
+            firefox_user_prefs={
+                "browser.fixup.domainsuffixwhitelist.zoo": True,
+            },
+        )
+        self.session_control["context"] = context
+
+        # Wire the same event and open a page (and keep a handle on it)
+        context.on("page", self.page_on_open_handler)
+        self.page = await context.new_page()
+        self.session_control["active_page"] = self.page
+
+        # Optional tracing (reuse your crawler_mode toggle)
+        if self.config["basic"].get("crawler_mode"):
+            await context.tracing.start(screenshots=True, snapshots=True)
+
+        try:
+            await self.page.goto(target, wait_until="load", timeout=10000)
+            self.logger.info(f"Loaded website: {target}")
+        except Exception as e:
+            self.logger.info("Failed to fully load the webpage before timeout")
+            self.logger.info(e)
+
+
     async def start(self, headless=None, args=None, website=None):
         self.playwright = await async_playwright().start()
         self.session_control['browser'] = await normal_launch_async(self.playwright,
