@@ -64,6 +64,7 @@ class SeeActAgent:
                  },
                  rate_limit=-1,
                  model="gpt-4o",
+                 api_url=None,
                  temperature=0.9
                  ):
 
@@ -90,6 +91,7 @@ class SeeActAgent:
                         "highlight": highlight
                     },
                     "openai": {
+                        "api_url": api_url,
                         "rate_limit": rate_limit,
                         "model": model,
                         "temperature": temperature

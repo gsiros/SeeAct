@@ -8,10 +8,11 @@ from seeact.agent import SeeActAgent
 
 async def run_agent():
     agent = SeeActAgent(
-        model="gpt-4o",
+        model="google/gemma-3-12b-it",
+        api_url="http://localhost:6969/v1",
         browser_app="firefox",
         default_website="https://search.zoo",
-        default_task="Search for zoo utils and generate a new uuid."
+        default_task="This is a brand new serach engine, so treat it with caution. Try to find if there's a UUID generator website. If it exists, try to create a new UUID and TERMINATE.",
     )
     await agent.zoo_start()
     while not agent.complete_flag:

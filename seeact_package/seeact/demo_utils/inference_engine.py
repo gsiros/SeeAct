@@ -69,6 +69,9 @@ def engine_factory(api_key=None, model=None, **kwargs):
     elif model == "llava":
         model="llava"
         return OllamaEngine(model=model, **kwargs)
+    else:
+        # Gonna use OpenAIEngine with vllm
+        return VLLMEngine(model=model, **kwargs)
     raise Exception(f"Unsupported model: {model}, currently supported models: \
                     gpt-4-vision-preview, gpt-4-turbo, gpt-4o, , gpt-4o-mini, gemini-1.5-pro-latest, llava")
 
@@ -265,6 +268,63 @@ class OpenAIEngine(Engine):
             messages=prompt_input,
             max_tokens=max_new_tokens if max_new_tokens else 4096,
             temperature=temperature if temperature else self.temperature,
+            **kwargs,
+        )
+        return [choice["message"]["content"] for choice in response.choices][0]
+
+class VLLMEngine(OpenAIEngine):
+    def __init__(self, **kwargs) -> None:
+        """
+            Init an OpenAI GPT/Codex engine with vllm
+        """
+        super().__init__(**kwargs)
+        self.api_url = kwargs.get("api_url", "http://localhost:6969/v1")
+        self.model = kwargs.get("model", "google/gemma-3-12b-it")
+
+    @backoff.on_exception(
+        backoff.expo,
+        (APIError, RateLimitError, APIConnectionError),
+    )
+    def generate(self, prompt: list = None, max_new_tokens=4096, temperature=None, model=None, image_path=None,
+                 ouput_0=None, turn_number=0, **kwargs):
+        self.current_key_idx = (self.current_key_idx + 1) % len(self.time_slots)
+        start_time = time.time()
+        if (
+                self.request_interval > 0
+                and start_time < self.next_avil_time[self.current_key_idx]
+        ):
+            time.sleep(self.next_avil_time[self.current_key_idx] - start_time)
+        prompt0, prompt1, prompt2 = prompt
+
+        base64_image = encode_image(image_path)
+        if turn_number == 0:
+            # Assume one turn dialogue
+            prompt_input = [
+                {"role": "system", "content": [{"type": "text", "text": prompt0}]},
+                {"role": "user",
+                 "content": [{"type": "text", "text": prompt1}, {"type": "image_url", "image_url": {"url":
+                                                                                                        f"data:image/jpeg;base64,{base64_image}",
+                                                                                                    "detail": "high"},
+                                                                 }]},
+            ]
+        elif turn_number == 1:
+            prompt_input = [
+                {"role": "system", "content": [{"type": "text", "text": prompt0}]},
+                {"role": "user",
+                 "content": [{"type": "text", "text": prompt1}, {"type": "image_url", "image_url": {"url":
+                                                                                                        f"data:image/jpeg;base64,{base64_image}",
+                                                                                                    "detail": "high"}, }]},
+                {"role": "assistant", "content": [{"type": "text", "text": f"\n\n{ouput_0}"}]},
+                {"role": "user", "content": [{"type": "text", "text": prompt2}]}, 
+            ]
+        response = litellm.completion(
+            model=model if model else self.model,
+            base_url=self.api_url,
+            api_key="empty", # vllm does not need api_key, but litellm requires it
+            messages=prompt_input,
+            max_tokens=max_new_tokens if max_new_tokens else 4096,
+            temperature=temperature if temperature else self.temperature,
+            custom_llm_provider="custom_openai",
             **kwargs,
         )
         return [choice["message"]["content"] for choice in response.choices][0]
