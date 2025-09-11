@@ -399,13 +399,6 @@ To be successful, it is important to follow the following rules:
         self.playwright = await async_playwright().start()
 
         # Launch FIREFOX instance with custom Zoo proxy
-        browser = await self.playwright.firefox.launch(
-            headless=headless,
-            args=args or [],
-            proxy={"server": proxy_server},
-        )
-        self.session_control["browser"] = browser
-
         # New context: ignore HTTPS errors, set viewport, allow .zoo TLD
         # Use launch_persistent_context to set Firefox prefs
         context = await self.playwright.firefox.launch_persistent_context(
@@ -421,9 +414,9 @@ To be successful, it is important to follow the following rules:
         )
         self.session_control["context"] = context
 
-        # Wire the same event and open a page (and keep a handle on it)
+        # Start on the default webpage
         context.on("page", self.page_on_open_handler)
-        self.page = await context.new_page()
+        self.page = context.pages[0] if context.pages else await context.new_page()
         self.session_control["active_page"] = self.page
 
         # Optional tracing (reuse your crawler_mode toggle)
