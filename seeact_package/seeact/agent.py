@@ -559,10 +559,10 @@ To be successful, it is important to follow the following rules:
                 self.logger.info(f"Typed '{value}' into element: {element_repr}")
 
         elif action_name == "SCROLL UP":
-            await page.evaluate(f"window.scrollBy(0, -{self.config['browser']['viewport']['height'] // 2});")
+            await page.evaluate(f"window.scrollBy(0, -{self.config['browser']['viewport']['height']});")
             self.logger.info("Scrolled up")
         elif action_name == "SCROLL DOWN":
-            await page.evaluate(f"window.scrollBy(0, {self.config['browser']['viewport']['height'] // 2});")
+            await page.evaluate(f"window.scrollBy(0, {self.config['browser']['viewport']['height']});")
             self.logger.info("Scrolled down")
         elif action_name == "PRESS HOME":
             await page.keyboard.press('Home')
