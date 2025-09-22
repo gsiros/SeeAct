@@ -52,7 +52,6 @@ def encode_image(image_path):
 
 
 def engine_factory(api_key=None, model=None, **kwargs):
-    model = model.lower()
     if model in ["gpt-4-vision-preview", "gpt-4-turbo", "gpt-4o", "gpt-4o-mini"]:
         if api_key and api_key != EMPTY_API_KEY:
             os.environ["OPENAI_API_KEY"] = api_key
